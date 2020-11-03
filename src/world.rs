@@ -5,6 +5,9 @@ pub struct World {
     blocks: Vec<Vec<bool>>, // access as blocks[y][x]
     width: usize,
     height: usize,
+    user_x: f64,
+    user_y: f64,
+    user_angle: f64,
 }
 
 impl World {
@@ -13,6 +16,9 @@ impl World {
             blocks: vec![vec![false; width]; height],
             width,
             height,
+            user_x: 0.0,
+            user_y: 0.0,
+            user_angle: 0.0,
         }
     }
 
@@ -26,8 +32,6 @@ impl World {
         } else {
             start_x.floor()
         };
-
-        let slope = angle.tan();
 
         let dx = angle.cos().signum();
 
@@ -110,5 +114,27 @@ impl World {
             self.blocks[y][x] = block;
             Ok(())
         }
+    }
+
+    // angle is given in radians
+    pub fn rotate_user(&mut self, delta_angle: f64) {
+        self.user_angle += delta_angle;
+    }
+
+    pub fn move_user(&mut self, amount: f64) {
+        self.user_x += amount * self.user_angle.cos();
+        self.user_y += amount * self.user_angle.sin();
+    }
+
+    pub fn get_user_x(&self) -> f64 {
+        self.user_x
+    }
+
+    pub fn get_user_y(&self) -> f64 {
+        self.user_y
+    }
+
+    pub fn get_user_angle(&self) -> f64 {
+        self.user_angle
     }
 }
