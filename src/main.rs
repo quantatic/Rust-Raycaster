@@ -7,10 +7,13 @@ use sdl2::keyboard::Keycode;
 use std::error::Error;
 use std::time::Duration;
 
-const WORLD_WIDTH: usize = 40;
-const WORLD_HEIGHT: usize = 40;
+const VIEW_FOV_DEGREES: f64 = 60.0;
+const VIEW_FOV: f64 = VIEW_FOV_DEGREES * std::f64::consts::PI / 180.0;
 
-const WORLD_BLOCK_SIZE: usize = 20;
+const WORLD_WIDTH: usize = 30;
+const WORLD_HEIGHT: usize = 30;
+
+const WORLD_BLOCK_SIZE: usize = 30;
 
 const DELTA_ANGLE: f64 = 0.03;
 const MOVE_SPEED: f64 = 0.2;
@@ -18,7 +21,13 @@ const MOVE_SPEED: f64 = 0.2;
 fn main() -> Result<(), Box<dyn Error>> {
     let sdl_context = sdl2::init()?;
 
-    let mut window = Window::new(&sdl_context, WORLD_WIDTH, WORLD_HEIGHT, WORLD_BLOCK_SIZE)?;
+    let mut window = Window::new(
+        &sdl_context,
+        WORLD_WIDTH,
+        WORLD_HEIGHT,
+        WORLD_BLOCK_SIZE,
+        VIEW_FOV,
+    )?;
 
     let mut event_pump = sdl_context.event_pump()?;
 
@@ -26,6 +35,16 @@ fn main() -> Result<(), Box<dyn Error>> {
     for i in 5..15 {
         world.set_block(i, i + 10, true)?;
         world.set_block(i + 10, i, true)?;
+    }
+
+    for y in 0..WORLD_HEIGHT {
+        world.set_block(0, y, true)?;
+        world.set_block(WORLD_WIDTH - 1, y, true)?;
+    }
+
+    for x in 0..WORLD_WIDTH {
+        world.set_block(x, 0, true)?;
+        world.set_block(x, WORLD_HEIGHT - 1, true)?;
     }
 
     //world.set_block(5, 5, true);
@@ -59,16 +78,6 @@ fn main() -> Result<(), Box<dyn Error>> {
 
         window.update(&world)?;
 
-        /*canvas.set_draw_color(Color::RED);
-        canvas.draw_rect(Rect::new(
-            ((user_x - 0.5) * WORLD_BLOCK_SIZE as f64) as i32,
-            ((user_y - 0.5) * WORLD_BLOCK_SIZE as f64) as i32,
-            WORLD_BLOCK_SIZE.try_into()?,
-            WORLD_BLOCK_SIZE.try_into()?,
-        ));
-
-        canvas.present();
-        */
         std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
     }
 

@@ -8,11 +8,14 @@ use sdl2::Sdl;
 use std::convert::TryInto;
 use std::error::Error;
 
+// const PROJECTION_PLANE_DISTANCE: f64 = 1.0;
+
 pub struct Window {
     width: usize,
     height: usize,
     block_size: usize,
     sdl2_canvas: Canvas<sdl2::video::Window>,
+    fov: f64,
 }
 
 impl Window {
@@ -21,6 +24,7 @@ impl Window {
         width: usize,
         height: usize,
         block_size: usize,
+        fov: f64,
     ) -> Result<Self, Box<dyn Error>> {
         let video_subsystem = context.video()?;
         let window = video_subsystem
@@ -39,6 +43,7 @@ impl Window {
             width,
             height,
             block_size,
+            fov,
         })
     }
 
@@ -46,6 +51,7 @@ impl Window {
         self.sdl2_canvas.set_draw_color(Color::BLACK);
         self.sdl2_canvas.clear();
 
+        // draw block squares
         for y in 0..self.height {
             for x in 0..self.width {
                 if world.block_at(x, y)? {
@@ -60,13 +66,41 @@ impl Window {
             }
         }
 
-        let mut angle: f64 = f64::to_degrees(world.get_user_angle()) - 30.0;
-        while angle < f64::to_degrees(world.get_user_angle()) + 30.0 {
-            let angle_rads = f64::to_radians(angle);
+        // draw actual slices
 
-            let dist = world.cast(world.get_user_x(), world.get_user_y(), angle_rads);
-            let end_x = world.get_user_x() + angle_rads.cos() * dist;
-            let end_y = world.get_user_y() + angle_rads.sin() * dist;
+        let mut slice_x = 0;
+        self.sdl2_canvas.set_draw_color(Color::BLUE);
+        while slice_x < (self.width * self.block_size) {
+            let angle = world.get_user_angle()
+                + (self.fov * (((slice_x as f64) / (self.width * self.block_size) as f64) - 0.5));
+            let delta_angle = angle - world.get_user_angle();
+
+            let dist = world.cast(world.get_user_x(), world.get_user_y(), angle);
+
+            let slice_height =
+                (((self.height * self.block_size) as f64) / (dist * delta_angle.cos())) as usize;
+            let slice_whitespace =
+                ((self.height * self.block_size).saturating_sub(slice_height)) / 2; // saturating sub, as whitespace is at least 0 (never underflows)
+
+            let start_point = Point::new(slice_x as i32, slice_whitespace as i32);
+
+            let end_point = Point::new(
+                slice_x as i32,
+                ((self.height * self.block_size) - slice_whitespace) as i32,
+            );
+
+            self.sdl2_canvas.draw_line(start_point, end_point)?;
+
+            slice_x += 1;
+        }
+
+        // draw ray lines
+        let mut angle = world.get_user_angle() - (self.fov / 2.0);
+        let delta_angle = self.fov / ((self.width * self.block_size) as f64);
+        while angle < world.get_user_angle() + (self.fov / 2.0) {
+            let dist = world.cast(world.get_user_x(), world.get_user_y(), angle);
+            let end_x = world.get_user_x() + angle.cos() * dist;
+            let end_y = world.get_user_y() + angle.sin() * dist;
 
             self.sdl2_canvas.set_draw_color(Color::GREEN);
             let start_point = Point::new(
@@ -80,11 +114,19 @@ impl Window {
 
             self.sdl2_canvas.draw_line(start_point, end_point)?;
 
-            angle += 0.5;
+            angle += delta_angle;
         }
 
-        self.sdl2_canvas.present();
+        // draw user
+        self.sdl2_canvas.set_draw_color(Color::RED);
+        self.sdl2_canvas.draw_rect(Rect::new(
+            ((world.get_user_x() - 0.5) * self.block_size as f64) as i32,
+            ((world.get_user_y() - 0.5) * self.block_size as f64) as i32,
+            self.block_size.try_into()?,
+            self.block_size.try_into()?,
+        ))?;
 
+        self.sdl2_canvas.present();
         Ok(())
     }
 }

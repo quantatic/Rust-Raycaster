@@ -16,8 +16,8 @@ impl World {
             blocks: vec![vec![false; width]; height],
             width,
             height,
-            user_x: 0.0,
-            user_y: 0.0,
+            user_x: 4.0,
+            user_y: 4.0,
             user_angle: 0.0,
         }
     }
